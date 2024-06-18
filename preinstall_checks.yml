@@ -10,7 +10,7 @@
     enable_repos:
       - 'rhel-9-for-x86_64-baseos-rpms'
   tasks:
-    - name: Pre-flight tasks for all  hosts in inventory
+    - name: Pre-flight tasks for all hosts in inventory
       become: true
       block:
         - name: Install nc for connectivity tests before disabling repos
@@ -21,6 +21,7 @@
             - inventory_hostname in groups['automationcontroller']
             - inventory_hostname in groups['automationhub']
             - inventory_hostname in groups['automationedacontroller']
+            - nventory_hostname in groups['execution_nodes'] and hostvars[inventory_hostname]['node_type'] == 'hop'
 
         - name: Make sure repos are disabled
           redhat.rhel_system_roles.rhsm_repository:
