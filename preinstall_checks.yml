@@ -169,7 +169,11 @@
                     false
                   }}
 
-    - name: Verify Mesh connectivity (port 27199)
+            - name: /var/lib/pulp is mounted on Automation Hub servers?
+              ansible.builtin.debug:
+                var: nfsmount_set
+
+    - name: Verify Hop node Receptor connectivity (port 27199)
       when:
         - inventory_hostname in groups['execution_nodes']
         - hostvars[inventory_hostname]['node_type'] == 'hop'
@@ -183,7 +187,7 @@
           loop_control:
             loop_var: control_node
  
-        - name: Display Receptor connectivity results
+        - name: Display Hop node receptor connectivity results
           ansible.builtin.debug:
             var: receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
 ...
