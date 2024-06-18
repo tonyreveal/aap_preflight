@@ -173,11 +173,42 @@
               ansible.builtin.debug:
                 var: nfsmount_set
 
+    # This test is difficult.  Returns "no route to host" if port is not open
+    # but that could include the firewalld port on the hop node or if Receptor
+    # isn't already installed.
+    # However, if the installer has been run and already installed Receptor
+    # then this task should successfully report a connection, provided ACLs
+    # and firewall ports are set correctly.
     - name: Verify Hop node Receptor connectivity (port 27199)
       when:
         - inventory_hostname in groups['execution_nodes']
         - hostvars[inventory_hostname]['node_type'] == 'hop'
       block:
+        - name: Gather package facts
+          ansible.builtin.package_facts:
+
+        - name: Gather service facts
+          ansible.builtin.service_facts:
+        
+        - name: Check if Receptor is installed
+          ansible.builtin.set_fact:
+            receptor_present: >-
+              {{ true if packages | selectattr('name', 'defined') |
+                selectattr('name', 'equalto', 'receptor.x86_64') | length == 1
+                else
+                false
+              }}
+
+        - name: Check if receptor service is running
+          ansible.builtin.set_fact:
+            receptor_svc_running: >-
+              {{ true if services | selectattr('name', 'defined') |
+                selectattr('name', 'contains', 'receptor') | length == 1 |
+                selectattr('state', 'equalto', 'running')
+                else
+                false
+              }}
+
         - name: Verify Hop node receptor connectivity to Controllers
           ansible.builtin.command:
             cmd: "nc -zv {{ control_node }} {{ receptor_listener_port }}"
@@ -186,8 +217,12 @@
           loop: "{{ groups['automationcontroller'] }}"
           loop_control:
             loop_var: control_node
+          when:
+            - receptor_present
+            - receptor_svc_running
  
         - name: Display Hop node receptor connectivity results
           ansible.builtin.debug:
             var: receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
+          when: receptor_connection is defined
 ...
