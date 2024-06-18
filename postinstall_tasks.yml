@@ -1,0 +1,53 @@
+---
+- name: Re-enable repos and Chef-Client after installing AAP
+  hosts: all
+  gather_facts: false
+  vars:
+    repos:
+      - 'rhel-9-for-x86_64-appstream-rpms'
+      - 'rhel-9-for-x86_64-baseos-rpms'
+  tasks:
+    - name: Re-enable repositories and make sure Redis group is created correctly.
+      block:
+      become: true
+        - name: Make sure repos are enabled
+          redhat.rhel_system_roles.rhsm_repository:
+            name: "{{ repos }}"
+            state: 'enabled'
+ 
+        - name: Get service facts
+        ansible.builtin.service_facts:
+
+        # Do we really want to do this?
+        - name: Re-enable chef-client
+          ansible.builtin.service:
+            name: 'chef-client'
+            state: 'started'
+          when: 'chef-client' in services
+       
+        - name: Ensure Redis group is created
+          ansible.builtin.group:
+            name: 'redis'
+            state: 'present'
+          check_mode: true
+          when:
+            - inventory_hostname in groups['automationcontroller'] or inventory_hostname in groups['execution_nodes']
+
+        - name: Make sure awx is a member of the redis group on controllers
+          ansible.builtin.user:
+            name: 'awx'
+            group: 'awx'
+            groups: 'nginx,receptor,redis'
+          check_mode: true
+          when:
+            - inventory_hostname in groups['automationcontroller']
+ 
+        - name: Make sure awx is a member of the redis group on execution nodes
+          ansible.builtin.user:
+            name: 'awx'
+            group: 'awx'
+            groups: 'receptor'
+          check_mode: true
+          when:
+            - inventory_hostname in groups['execution_nodes']
+...
