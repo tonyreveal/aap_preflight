@@ -23,6 +23,7 @@
           ansible.builtin.service:
             name: 'chef-client'
             state: 'started'
+            enabled: true
           when: 'chef-client' in services
        
         - name: Ensure Redis group is created
