@@ -98,7 +98,7 @@
             - name: Display HUB db credential test results
               ansible.builtin.debug:
                 var: hub_pgsql_test
-            \
+
             - name: Make sure the hstore extension is enabled for Automation Hub
               community.postgresql.postgresql_ext:
                 name: 'hstore'
