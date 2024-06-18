@@ -40,7 +40,7 @@
             enabled: false
           when: 'chef-client' in services
 
-    - name: Perform non-aap managed database connectivity tests
+    - name: Perform non-aap installer managed database connectivity tests
       when: groups['database'] | length == 0
       block: 
         - name: Automation Controller Database Tests
@@ -71,7 +71,7 @@
               ansible.builtin.debug:
                 var: aap_pgsql_test
 
-        - name: Automation Hub Database Tests
+        - name: Automation Hub database Tests
           when: inventory_hostname in groups['automationhub']
           block:
             - name: Verify Hub connectivity to Hub DB server / port
@@ -117,7 +117,7 @@
                 # Since it's not an AAP installation managed database we cannot manage the host
                 # to install the required package.
 
-        - name: Automation EDA Controller Database Tests
+        - name: EDA Controller Database Tests
           when: inventory_hostname in groups['automationedacontroller']
           block:
             - name: Verify EDA connectivity to EDA DB server / port
@@ -144,6 +144,30 @@
             - name: Display EDA db credential test results
               ansible.builtin.debug:
                 var: eda_pgsql_test
+
+    - name: Additional Automation Hub tests
+      when: inventory_hostname in groups['automationhub']
+      block:
+        - name: Check number of Automation Hub nodes in inventory
+          ansible.builtin.set_fact:
+            hub_clustered: true
+          when: groups'[automationhub'] | length > 1
+        
+        - name: Perform clustered Automation Hub tasks
+          when: hub_clustered | default(false)
+          block:
+            - name: Gather facts about Automation Hub servers
+              ansible.builtin.setup:
+            
+            - name: Check for shared mount on clustered Automation Hub
+              ansible.builtin.set_fact:
+                nfsmount_set: >-
+                  {{ true if ansible_mounts | selectattr('mount', 'defined') |
+                    selectattr('fstype', 'equalto', 'nfs') |
+                    selectattr('mount', 'equalto', '/var/lib/pulp') | length == 1
+                    else
+                    false
+                  }}
 
     - name: Verify Mesh connectivity (port 27199)
       when:
