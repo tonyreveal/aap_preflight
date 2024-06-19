@@ -17,12 +17,6 @@
           ansible.builtin.dnf:
             name: "{{ pkgs }}"
             state: 'present'
-          when: >-
-            inventory_hostname in groups['automationcontroller'] or
-            inventory_hostname in groups['automationhub'] or
-            inventory_hostname in groups['automationedacontroller'] or
-            inventory_hostname in groups['execution_nodes'] and
-            hostvars[inventory_hostname]['node_type'] == 'hop'
 
         - name: Make sure repos are disabled
           redhat.rhel_system_roles.rhsm_repository:
