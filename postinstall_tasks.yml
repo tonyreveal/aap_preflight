@@ -2,17 +2,13 @@
 - name: Re-enable repos and Chef-Client after installing AAP
   hosts: all
   gather_facts: false
-  vars:
-    repos:
-      - 'rhel-9-for-x86_64-appstream-rpms'
-      - 'rhel-9-for-x86_64-baseos-rpms'
   tasks:
     - name: Re-enable repositories and make sure Redis group is created correctly.
       block:
       become: true
         - name: Make sure repos are enabled
           redhat.rhel_system_roles.rhsm_repository:
-            name: "{{ repos }}"
+            name: "{{ all_repos }}"
             state: 'enabled'
  
         - name: Get service facts

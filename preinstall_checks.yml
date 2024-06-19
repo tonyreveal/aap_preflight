@@ -2,13 +2,10 @@
 - name: AAP Install pre-flight checks
   hosts: all
   gather_facts: false
-  vars:
-    pkgs:
-      - 'nmap-ncat'
-    disable_repos:
-      - 'rhel-9-for-x86_64-appstream-rpms'
-    enable_repos:
-      - 'rhel-9-for-x86_64-baseos-rpms'
+  pre-tasks:
+    - name: Include vars
+      ansible.builtin.include_vars:
+        file: vars/check_vars.yml
   tasks:
     - name: Pre-flight tasks for all hosts in inventory
       become: true

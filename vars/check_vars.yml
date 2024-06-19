@@ -1,0 +1,11 @@
+---
+install_pkgs:
+  - 'nmap-ncat'
+disable_repos:
+  - 'rhel-9-for-x86_64-appstream-rpms'
+enable_repos:
+  - 'rhel-9-for-x86_64-baseos-rpms'
+all_repos:
+  - 'rhel-9-for-x86_64-appstream-rpms'
+  - 'rhel-9-for-x86_64-baseos-rpms'
+...
