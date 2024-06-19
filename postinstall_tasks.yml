@@ -2,6 +2,10 @@
 - name: Re-enable repos and Chef-Client after installing AAP
   hosts: all
   gather_facts: false
+  pre-tasks:
+    - name: Include vars
+      ansible.builtin.include_vars:
+        file: vars/check_vars.yml
   tasks:
     - name: Re-enable repositories and make sure Redis group is created correctly.
       block:

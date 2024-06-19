@@ -12,7 +12,7 @@
       block:
         - name: Install nc for connectivity tests before disabling repos
           ansible.builtin.dnf:
-            name: "{{ pkgs }}"
+            name: "{{ install_pkgs }}"
             state: 'present'
 
         - name: Make sure repos are disabled
