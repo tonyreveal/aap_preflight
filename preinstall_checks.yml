@@ -17,11 +17,12 @@
           ansible.builtin.dnf:
             name: "{{ pkgs }}"
             state: 'present'
-          when:
-            - inventory_hostname in groups['automationcontroller']
-            - inventory_hostname in groups['automationhub']
-            - inventory_hostname in groups['automationedacontroller']
-            - nventory_hostname in groups['execution_nodes'] and hostvars[inventory_hostname]['node_type'] == 'hop'
+          when: >-
+            inventory_hostname in groups['automationcontroller'] or
+            inventory_hostname in groups['automationhub'] or
+            inventory_hostname in groups['automationedacontroller'] or
+            inventory_hostname in groups['execution_nodes'] and
+            hostvars[inventory_hostname]['node_type'] == 'hop'
 
         - name: Make sure repos are disabled
           redhat.rhel_system_roles.rhsm_repository:
@@ -172,12 +173,12 @@
 
             - name: /var/lib/pulp is mounted on Automation Hub servers?
               ansible.builtin.debug:
-                var: nfsmount_set
+                msg: "/var/lib/pulp is mounted: {{ nfsmount_set }}"
 
-    # This test is difficult.  Returns "no route to host" if port is not open
-    # but that could include the firewalld port on the hop node or if Receptor
+    # This test block is difficult.  Returns "no route to host" if port is not open
+    # but that could include the firewalld port on the controller node or if Receptor
     # isn't already installed.
-    # However, if the installer has been run and already installed Receptor
+    # However, if the installer has been run and Receptor has been installed
     # then this task should successfully report a connection, provided ACLs
     # and firewall ports are set correctly.
     - name: Verify Hop node Receptor connectivity (port 27199)
@@ -187,9 +188,6 @@
       block:
         - name: Gather package facts
           ansible.builtin.package_facts:
-
-        - name: Gather service facts
-          ansible.builtin.service_facts:
         
         - name: Check if Receptor is installed
           ansible.builtin.set_fact:
@@ -200,6 +198,7 @@
                 false
               }}
 
+        # Service facts gathered earlier in playbook
         - name: Check if receptor service is running
           ansible.builtin.set_fact:
             receptor_svc_running: >-
