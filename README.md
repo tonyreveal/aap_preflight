@@ -17,7 +17,7 @@ The pre-install checks playbook does not cover every possible scenario.  But it 
 - Installs nmap-ncat (for port connectivity tests)
 - Disables appstream repo on all hosts in inventory
 - Enables baseos repo on all hosts in inventory
-- Disables chef-client if installed and running on all hosts in inventory
+- Disables chef-client on all hosts in inventory if installed and running
 - Non-AAP install managed database tests
   - Controller:
     - Port connectivity test using nc
