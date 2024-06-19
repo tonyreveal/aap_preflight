@@ -8,12 +8,20 @@ See list of [pre-install checks](#pre-install-checks-performed) below.
 
 See list of [post-install checks](#post-install-checks-performed) below.
 
+
 ## Playbook(s):
 
 | Playbook Name| Description |
 |---|---|
 | `preinstall_checks.yml` | Uses the AAP install inventory to perform pre-installation validation tasks. |
 | `postinstall_tasks.yml` | Uses the AAP install inventory to perform post-installation tasks. |
+
+
+### Usage:
+
+The inventory used must be your AAP install inventory file
+
+`ansible-playbook preinstall_checks.yml -i inventory`
 
 
 ### Pre-install checks performed:
