@@ -38,3 +38,13 @@ The pre-install checks playbook does not cover every possible scenario.  But it 
   - Checks if receptor service is running.
   - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
   - Returns "no route to host" if port is not open but that could include situations where firewalld port on the controller node isn't enabled or if Receptor isn't already installed.
+
+
+### Post-install checks performed:
+
+- Re-enables repositories on all hosts in inventory
+- Re-enables chef-client if installed
+  - I really don't like the idea of managing AAP with Chef
+- Checks that the redis group is created on controllers and execution nodes
+- Checks that the awx user is a member of redis, nginx, and receptor groups on Controllers.
+- Checks that the awx user is a member of the receptor group on execution nodes
