@@ -143,11 +143,14 @@
       block:
         - name: Check number of Automation Hub nodes in inventory
           ansible.builtin.set_fact:
-            hub_clustered: true
-          when: groups'[automationhub'] | length > 1
+            hub_clustered: >-
+              {{ true if groups['automationhub'] | length > 1
+                else
+                false
+              }}
         
         - name: Perform clustered Automation Hub tasks
-          when: hub_clustered | default(false)
+          when: hub_clustered
           block:
             - name: Gather facts about Automation Hub servers
               ansible.builtin.setup:
