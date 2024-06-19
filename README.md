@@ -4,6 +4,10 @@ One common issue with installing Ansible Automation Platform is running into err
 
 The pre-install checks playbook does not cover every possible scenario.  But it does validate that all nodes in the inventory have appropriate connectivity and that any credentials specified for a non-AAP installer managed database are good.
 
+See list of [pre-install checks](#pre-install-checks-performed) below.
+
+See list of [post-install checks](#post-install-checks-performed) below.
+
 ## Playbook(s):
 
 | Playbook Name| Description |
