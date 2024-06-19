@@ -106,9 +106,9 @@
                 ignore_errors: true
                 # enabling hstore requires postgresql-contrib to be installed
                 # on the database server.  if it's not installed this task will fail.
-                # We want to ignore the failure and continue with the remainder of the tasks.
-                # Since it's not an AAP installation managed database we cannot manage the host
-                # to install the required package.
+                # We want to ignore the failure and continue with the remainder of the tests.
+                # Since it's not an AAP installation managed database we cannot install
+                # the required package.
 
         - name: EDA Controller Database Tests
           when: inventory_hostname in groups['automationedacontroller']
