@@ -174,13 +174,11 @@
             - name: /var/lib/pulp is mounted on Automation Hub servers?
               ansible.builtin.debug:
                 msg: "/var/lib/pulp is mounted: {{ nfsmount_set }}"
+            
+            - name: Should show a value here for automationhub_main_url if a clustered install
+              ansible.builtin.debug:
+                msg: "Automation Hub main URL: {{ automationhub_main_url }}"
 
-    # This test block is difficult.  Returns "no route to host" if port is not open
-    # but that could include the firewalld port on the controller node or if Receptor
-    # isn't already installed.
-    # However, if the installer has been run and Receptor has been installed
-    # then this task should successfully report a connection, provided ACLs
-    # and firewall ports are set correctly.
     - name: Verify Hop node Receptor connectivity (port 27199)
       when:
         - inventory_hostname in groups['execution_nodes']
@@ -198,7 +196,6 @@
                 false
               }}
 
-        # Service facts gathered earlier in playbook
         - name: Check if receptor service is running
           ansible.builtin.set_fact:
             receptor_svc_running: >-

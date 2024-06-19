@@ -10,3 +10,31 @@ The pre-install checks playbook does not cover every possible scenario.  But it 
 |---|---|
 | `preinstall_checks.yml` | Uses the AAP install inventory to perform pre-installation validation tasks. |
 | `postinstall_tasks.yml` | Uses the AAP install inventory to perform post-installation tasks. |
+
+
+### Pre-install checks performed:
+
+- Installs nmap-ncat (for port connectivity tests)
+- Disables appstream repo
+- Enables baseos repo
+- Disables chef-client if installed and running
+- Non-AAP install managed database tests
+  - Controller:
+    - Port connectivity test using nc
+    - Database credential test (attempt to login)
+  - Automation Hub:
+    - Port connectivity test using nc
+    - Database credential test (attempt to login)
+    - Install hstore extension
+  - EDA Controller:
+    - Port connectivity test using nc
+    - Database credential test (attempt to login)
+- Check if Automation Hub is clustered
+  - Check all all nodes have /var/lib/pulp mounted
+  - Verify `automationhub_main_url` is set
+- Check receptor port connectivity.
+  - These tests are really only valuable if receptor is already installed.
+  - Checks if receptor is installed.
+  - Checks if receptor service is running.
+  - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
+  - Returns "no route to host" if port is not open but that could include the firewalld port on the controller node or if Receptor isn't already installed.
