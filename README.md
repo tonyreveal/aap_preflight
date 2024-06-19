@@ -17,7 +17,7 @@ The pre-install checks playbook does not cover every possible scenario.  But it 
 - Installs nmap-ncat (for port connectivity tests)
 - Disables appstream repo on all hosts in inventory
 - Enables baseos repo on all hosts in inventory
-- Disables chef-client if installed and running
+- Disables chef-client if installed and running on all hosts in inventory
 - Non-AAP install managed database tests
   - Controller:
     - Port connectivity test using nc
@@ -37,4 +37,4 @@ The pre-install checks playbook does not cover every possible scenario.  But it 
   - Checks if receptor is installed.
   - Checks if receptor service is running.
   - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
-  - Returns "no route to host" if port is not open but that could include the firewalld port on the controller node or if Receptor isn't already installed.
+  - Returns "no route to host" if port is not open but that could include situations where firewalld port on the controller node isn't enabled or if Receptor isn't already installed.
