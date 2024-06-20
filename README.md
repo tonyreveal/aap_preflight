@@ -44,13 +44,18 @@ The inventory used must be your AAP install inventory file
 - Check if Automation Hub is clustered
   - Check all all nodes have /var/lib/pulp mounted
   - Verify `automationhub_main_url` is set
-- Check receptor port connectivity.
+- Check Hop node receptor port connectivity to Controller.
   - These tests are really only valuable if receptor is already installed.
   - Checks if receptor is installed.
   - Checks if receptor service is running.
   - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
   - Returns "no route to host" if port is not open but that could include situations where firewalld port on the controller node isn't enabled or if Receptor isn't already installed.
-
+- Check Execution node receptor port connectivity to Controller if not behind a hop node.
+  - These tests are really only valuable if receptor is already installed.
+  - Checks if receptor is installed.
+  - Checks if receptor service is running.
+  - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
+  - Returns "no route to host" if port is not open but that could include situations where firewalld port on the controller node isn't enabled or if Receptor isn't already installed.
 
 ### Post-install checks performed:
 
