@@ -2,7 +2,7 @@
 - name: AAP Install pre-flight checks
   hosts: all
   gather_facts: false
-  pre-tasks:
+  pre_tasks:
     - name: Include vars
       ansible.builtin.include_vars:
         file: vars/check_vars.yml
@@ -14,6 +14,10 @@
           ansible.builtin.dnf:
             name: "{{ install_pkgs }}"
             state: 'present'
+          when:
+            - inventory_hostname in groups['automationcontroller']
+            - inventory_hostname in groups['automationhub']
+            - inventory_hostname in groups['automationedacontroller']
 
         - name: Make sure repos are disabled
           redhat.rhel_system_roles.rhsm_repository:
@@ -172,99 +176,4 @@
             - name: Should show a value here for automationhub_main_url if a clustered install
               ansible.builtin.debug:
                 msg: "Automation Hub main URL: {{ automationhub_main_url }}"
-
-    - name: Verify Hop node Receptor connectivity to Controllers
-      when:
-        - inventory_hostname in groups['execution_nodes']
-        - hostvars[inventory_hostname]['node_type'] == 'hop'
-      block:
-        - name: Gather package facts
-          ansible.builtin.package_facts:
-        
-        - name: Check if Receptor is installed
-          ansible.builtin.set_fact:
-            hop_receptor_present: >-
-              {{ true if packages | selectattr('name', 'defined') |
-                selectattr('name', 'equalto', 'receptor.x86_64') | length == 1
-                else
-                false
-              }}
-
-        - name: Check if receptor service is running
-          ansible.builtin.set_fact:
-            hop_receptor_svc_running: >-
-              {{ true if services | selectattr('name', 'defined') |
-                selectattr('name', 'contains', 'receptor') | length == 1 |
-                selectattr('state', 'equalto', 'running')
-                else
-                false
-              }}
-
-        - name: Verify Hop node receptor connectivity to Controllers
-          ansible.builtin.command:
-            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ control_node }}"
-          become: true
-          register: hop_receptor_connection
-          ignore_errors: true
-          loop: "{{ groups['automationcontroller'] }}"
-          loop_control:
-            loop_var: control_node
-          when:
-            - hop_receptor_present
-            - hop_receptor_svc_running
- 
-        - name: Display Hop node receptor connectivity results
-          ansible.builtin.debug:
-            var: hop_receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
-          when: hop_receptor_connection is defined
-
-    - name: Verify Execution Node Receptor connectivity to Controllers
-      when:
-        - inventory_hostname in groups['execution_nodes']
-        - hostvars[inventory_hostname]['node_type'] == 'exec'
-      block:
-        - name: Gather package facts
-          ansible.builtin.package_facts:
-        
-        - name: Check if Receptor is installed
-          ansible.builtin.set_fact:
-            exec_receptor_present: >-
-              {{ true if packages | selectattr('name', 'defined') |
-                selectattr('name', 'equalto', 'receptor.x86_64') | length == 1
-                else
-                false
-              }}
-
-        - name: Check if receptor service is running
-          ansible.builtin.set_fact:
-            exec_receptor_svc_running: >-
-              {{ true if services | selectattr('name', 'defined') |
-                selectattr('name', 'contains', 'receptor') | length == 1 |
-                selectattr('state', 'equalto', 'running')
-                else
-                false
-              }}
-
-        - name: Verify Execution node receptor connectivity to Controllers
-          ansible.builtin.command:
-            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ control_node }}"
-          become: true
-          register: exec_receptor_connection
-          ignore_errors: true
-          loop: "{{ groups['automationcontroller'] }}"
-          loop_control:
-            loop_var: control_node
-          when:
-            - exec_receptor_present
-            - exec_receptor_svc_running
-
-        - name: Display Execution node receptor success connectivity results
-          ansible.builtin.debug:
-            var: exec_receptor_connection['results'] | selectattr('stdout', 'defined') | map(attribute='stdout') | list
-          when: exec_receptor_connection is defined
-
-        - name: Display Execution node receptor failure connectivity results
-          ansible.builtin.debug:
-            var: exec_receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
-          when: exec_receptor_connection is defined
 ...
