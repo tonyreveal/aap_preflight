@@ -19,13 +19,15 @@
         ansible.builtin.service_facts:
 
         # Do we really want to do this?
+        # I don't like the idea of managing AAP with Chef
         - name: Re-enable chef-client
           ansible.builtin.service:
             name: 'chef-client'
             state: 'started'
             enabled: true
           when: 'chef-client' in services
-       
+
+# Validate AWX is a member of the correct groups       
         - name: Ensure Redis group is created
           ansible.builtin.group:
             name: 'redis'
@@ -52,17 +54,17 @@
           when:
             - inventory_hostname in groups['execution_nodes']
 
-    - name: Verify Hop node Receptor connectivity to Controllers
+# Receptor Tests
+    - name: Check Receptor connectivity
       when:
         - inventory_hostname in groups['execution_nodes']
-        - hostvars[inventory_hostname]['node_type'] == 'hop'
       block:
         - name: Gather package facts
           ansible.builtin.package_facts:
         
         - name: Check if Receptor is installed
           ansible.builtin.set_fact:
-            hop_receptor_present: >-
+            receptor_present: >-
               {{ true if packages | selectattr('name', 'defined') |
                 selectattr('name', 'equalto', 'receptor.x86_64') | length == 1
                 else
@@ -71,7 +73,7 @@
 
         - name: Check if receptor service is running
           ansible.builtin.set_fact:
-            hop_receptor_svc_running: >-
+            receptor_svc_running: >-
               {{ true if services | selectattr('name', 'defined') |
                 selectattr('name', 'contains', 'receptor') | length == 1 |
                 selectattr('state', 'equalto', 'running')
@@ -89,40 +91,14 @@
           loop_control:
             loop_var: control_node
           when:
-            - hop_receptor_present
-            - hop_receptor_svc_running
+            - receptor_present
+            - receptor_svc_running
+            - hostvars[inventory_hostname]['node_type'] == 'hop'
  
         - name: Display Hop node receptor connectivity results
           ansible.builtin.debug:
             var: hop_receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
           when: hop_receptor_connection is defined
-
-    - name: Verify Execution Node Receptor connectivity to Controllers
-      when:
-        - inventory_hostname in groups['execution_nodes']
-        - hostvars[inventory_hostname]['node_type'] == 'exec'
-      block:
-        - name: Gather package facts
-          ansible.builtin.package_facts:
-        
-        - name: Check if Receptor is installed
-          ansible.builtin.set_fact:
-            exec_receptor_present: >-
-              {{ true if packages | selectattr('name', 'defined') |
-                selectattr('name', 'equalto', 'receptor.x86_64') | length == 1
-                else
-                false
-              }}
-
-        - name: Check if receptor service is running
-          ansible.builtin.set_fact:
-            exec_receptor_svc_running: >-
-              {{ true if services | selectattr('name', 'defined') |
-                selectattr('name', 'contains', 'receptor') | length == 1 |
-                selectattr('state', 'equalto', 'running')
-                else
-                false
-              }}
 
         - name: Verify Execution node receptor connectivity to Controllers
           ansible.builtin.command:
@@ -134,8 +110,9 @@
           loop_control:
             loop_var: control_node
           when:
-            - exec_receptor_present
-            - exec_receptor_svc_running
+            - receptor_present
+            - receptor_svc_running
+            - hostvars[inventory_hostname]['node_type'] == 'exec'
 
         - name: Display Execution node receptor success connectivity results
           ansible.builtin.debug:

@@ -29,7 +29,13 @@ The inventory used must be your AAP install inventory file
 - Installs nmap-ncat (for port connectivity tests)
 - Disables appstream repo on all hosts in inventory
 - Enables baseos repo on all hosts in inventory
-- Disables chef-client on all hosts in inventory if installed and running
+- Check if Chef-Client is installed
+- Check if Chef-Client service is running
+- Stops and Disables chef-client on all hosts in inventory if installed and running
+- AAP install database validation
+  - Check all pg_* vars for controller database
+  - Check all automationhub_pg_ vars for automation hub
+  - Check all automationedacontroller_pg_* vars for eda controller
 - Non-AAP install managed database tests
   - Controller:
     - Port connectivity test using nc
@@ -44,18 +50,7 @@ The inventory used must be your AAP install inventory file
 - Check if Automation Hub is clustered
   - Check all all nodes have /var/lib/pulp mounted
   - Verify `automationhub_main_url` is set
-- Check Hop node receptor port connectivity to Controller.
-  - These tests are really only valuable if receptor is already installed.
-  - Checks if receptor is installed.
-  - Checks if receptor service is running.
-  - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
-  - Returns "no route to host" if port is not open but that could include situations where firewalld port on the controller node isn't enabled or if Receptor isn't already installed.
-- Check Execution node receptor port connectivity to Controller if not behind a hop node.
-  - These tests are really only valuable if receptor is already installed.
-  - Checks if receptor is installed.
-  - Checks if receptor service is running.
-  - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
-  - Returns "no route to host" if port is not open but that could include situations where firewalld port on the controller node isn't enabled or if Receptor isn't already installed.
+
 
 ### Post-install checks performed:
 
@@ -65,3 +60,13 @@ The inventory used must be your AAP install inventory file
 - Checks that the redis group is created on controllers and execution nodes
 - Checks that the awx user is a member of redis, nginx, and receptor groups on Controllers.
 - Checks that the awx user is a member of the receptor group on execution nodes
+- Check Hop node receptor port connectivity to Controller.
+  - Checks if receptor is installed.
+  - Checks if receptor service is running.
+  - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
+  - Returns "no route to host" if port is not open but that could include situations where firewalld port on the controller node isn't enabled or if Receptor isn't already installed.
+- Check Execution node receptor port connectivity to Controller if not behind a hop node.
+  - Checks if receptor is installed.
+  - Checks if receptor service is running.
+  - If receptor is installed and running then this block should successfully report a connection, provided ACLs and firewall ports are set correctly.
+  - Returns "no route to host" if port is not open but that could include situations where firewalld port on the controller node isn't enabled or if Receptor isn't already installed.

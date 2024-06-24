@@ -36,6 +36,78 @@
             state: stopped
             enabled: false
           when: 'chef-client' in services
+    
+    - name: Validate pg_* vars
+      when: groups['database'] | length > 0
+      block: 
+        - name: Check that all Controller database vars have values
+          ansible.builtin.assert:
+            that:
+              - pg_host is defined and pg_host | length
+              - pg_port is defined and pg_port | length
+              - pg_database is defined and pg_database | length
+              - pg_username is defined and pg_username | length
+              - pg_password is defined and pg_password | length
+              - pg_sslmode is defined and pg_sslmode | length
+          when: groups['automationcontroller'] | length > 0
+      
+      rescue:
+        - name: Set var for user notification of pg_ vars
+          ansible.builtin.set_fact:
+            check_pg_vars: >-
+              "One or more pg_* variables did not have a value.
+              Please make sure all of the pg_* variables have values and are properly quoted."
+
+        - name: Clear host errors
+          ansible.builtin.meta: clear_host_errors
+
+    - name: Validate automationhub_pg_ vars
+      when: groups['database'] | length > 0
+      block: 
+        - name: Check that all Automation Hub database vars have values
+          ansible.builtin.assert:
+            that:
+              - automationhub_pg_host is defined and automationhub_pg_host | length
+              - automationhub_pg_port is defined and automationhub_pg_port | length
+              - automationhub_pg_database is defined and automationhub_pg_database | length
+              - automationhub_pg_username is defined and automationhub_pg_username | length
+              - automationhub_pg_password is defined and automationhub_pg_password | length
+              - automationhub_pg_sslmode is defined and automationhub_pg_sslmode | length
+          when: groups['automationhub'] | length > 0
+
+      rescue:
+        - name: Set var for user notification of automationhub_pg_ vars
+          ansible.builtin.set_fact:
+            ah_check_pg_vars: >-
+              "One or more of the automationhub_pg_* variables did not have a value.
+              Please make sure all of the automationhub_pg_* variables have values and are properly quoted."
+
+        - name: Clear host errors
+          ansible.builtin.meta: clear_host_errors
+
+    - name: Validate automationedacontroller_pg_* vars
+      when: groups['database'] | length > 0
+      block: 
+        - name: Check that all EDA Controller database vars have values
+          ansible.builtin.assert:
+            that:
+              - automationedacontroller_pg_host is defined and automationedacontroller_pg_host | length
+              - automationedacontroller_pg_port is defined and automationedacontroller_pg_port | length
+              - automationedacontroller_pg_database is defined and automationedacontroller_pg_database | length
+              - automationedacontroller_pg_username is defined and automationedacontroller_pg_username | length
+              - automationedacontroller_pg_password is defined and automationedacontroller_pg_password | length
+              - automationedacontroller_pg_sslmode is defined and automationedacontroller_pg_sslmode | length
+            when: groups['automationedacontroller'] | length > 0
+      
+      rescue:
+        - name: Set var for user notification of automationedacontroller_pg_ vars
+          ansible.builtin.set_fact:
+            eda_check_pg_vars: >-
+              "One or more of the automationedacontroller_pg_* variables did not have a value.
+              Please make sure all of the automationedacontroller_pg_* variables have values and are properly quoted."
+
+        - name: Clear host errors
+          ansible.builtin.meta: clear_host_errors
 
     - name: Perform non-aap installer managed database connectivity tests
       when: groups['database'] | length == 0
@@ -123,10 +195,6 @@
               register: eda_db_connection
               ignore_errors: true
     
-            - name: Display EDA connection result
-              ansible.builtin.debug:
-                var: eda_db_connection['stderr']
-    
             - name: Verify EDA database credentials by trying to connect to db
               community.postgresql.postgresql_ping:
                 db: "{{ automationedacontroller_pg_database }}"
@@ -169,11 +237,98 @@
                     false
                   }}
 
-            - name: /var/lib/pulp is mounted on Automation Hub servers?
-              ansible.builtin.debug:
-                msg: "/var/lib/pulp is mounted: {{ nfsmount_set }}"
-            
-            - name: Should show a value here for automationhub_main_url if a clustered install
-              ansible.builtin.debug:
-                msg: "Automation Hub main URL: {{ automationhub_main_url }}"
+
+
+
+      - name: Display Controller test results
+        when:
+          - inventory_hostname in groups['automationcontroller']
+        block:
+          - name: Display AAP installed db test results
+            when: groups['database'] | lenght > 0
+            ansible.builtin.debug:
+              msg: >-
+                {{ check_pg_vars if check_pg_vars is defined
+                  else
+                  "All vars were set properly"
+            run_once: true
+          
+          - name: Display Non-AAP installed db test results
+            when: groups['database'] | lenght > 0
+            ansible.builtin.debug:
+              msg: >-
+                {{ check_pg_vars if check_pg_vars is defined
+                  else
+                  "All pg_ vars were set properly"
+            run_once: true
+
+
+
+
+
+      - name: Display Automation Hub test results
+        when:
+          - inventory_hostname in groups['automationhub']
+        block:
+          - name: Display Automation Hub test results
+            when:
+              - groups['automationhub'] | length == 1
+            block:
+              - name: Display AAP installed PAH db test results
+                when: groups['database'] | lenght > 0
+                ansible.builtin.debug:
+                  msg: >-
+                    {{ ah_check_pg_vars if ah_check_pg_vars is defined
+                      else
+                      "All automationhub_pg_ vars were set properly"
+                run_once: true
+
+
+
+
+              - name: Display EDA connection result
+                ansible.builtin.debug:
+                  var: eda_db_connection['stderr']
+
+
+
+
+            - name: Display Automation Hub test results
+              when:
+                - groups['automationhub'] | length == 1
+              block:
+          
+
+          - name: /var/lib/pulp is mounted on Automation Hub servers?
+            ansible.builtin.debug:
+              msg: "/var/lib/pulp is mounted: {{ nfsmount_set }}"
+            when:
+              - hub_clustered
+              - inventory_hostname in groups['automationhub']
+
+          - name: Show automationhub_main_url if Clustered Automation Hub
+            ansible.builtin.debug:
+              msg: "Automation Hub main URL: {{ automationhub_main_url }}"
+            run_once: true
+            when:
+              - hub_clustered
+
+
+
+
+      - name: Display EDA Controller test results
+        when:
+          - inventory_hostname in groups['automationedacontroller']
+        block:
+          - name: Display AAP installed EDA db test results
+            when: groups['database'] | lenght > 0
+            ansible.builtin.debug:
+              msg: >-
+                {{ eda_check_pg_vars if eda_check_pg_vars is defined
+                  else
+                  "All automationedacontroller_pg_ vars were set properly"
+            run_once: true
+
+
+
 ...
