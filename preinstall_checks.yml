@@ -240,6 +240,7 @@
 
 
 
+
       - name: Display Controller test results
         when:
           - inventory_hostname in groups['automationcontroller']
@@ -270,7 +271,7 @@
         when:
           - inventory_hostname in groups['automationhub']
         block:
-          - name: Display Automation Hub test results
+          - name: Display Standalone Automation Hub test results
             when:
               - groups['automationhub'] | length == 1
             block:
@@ -282,36 +283,30 @@
                       else
                       "All automationhub_pg_ vars were set properly"
                 run_once: true
-
-
-
-
-              - name: Display EDA connection result
+              
+              - name: Display Non-AAP installed / Self-Managed db test results
+                when: groups['database'] | lenght > 0
                 ansible.builtin.debug:
-                  var: eda_db_connection['stderr']
+                  var: hub_db_connection['stderr']
 
-
-
-
-            - name: Display Automation Hub test results
-              when:
-                - groups['automationhub'] | length == 1
-              block:
-          
-
-          - name: /var/lib/pulp is mounted on Automation Hub servers?
-            ansible.builtin.debug:
-              msg: "/var/lib/pulp is mounted: {{ nfsmount_set }}"
+          - name: Display Clustered Automation Hub test results
             when:
-              - hub_clustered
-              - inventory_hostname in groups['automationhub']
+              - groups['automationhub'] | length > 1
+            block:          
+              - name: /var/lib/pulp is mounted on Automation Hub servers?
+                ansible.builtin.debug:
+                  msg: "/var/lib/pulp is mounted: {{ nfsmount_set }}"
+                when:
+                  - hub_clustered
+                  - inventory_hostname in groups['automationhub']
 
-          - name: Show automationhub_main_url if Clustered Automation Hub
-            ansible.builtin.debug:
-              msg: "Automation Hub main URL: {{ automationhub_main_url }}"
-            run_once: true
-            when:
-              - hub_clustered
+              - name: Show automationhub_main_url if Clustered Automation Hub
+                ansible.builtin.debug:
+                  msg: "Automation Hub main URL: {{ automationhub_main_url }}"
+                run_once: true
+                when:
+                  - hub_clustered
+
 
 
 
@@ -320,6 +315,10 @@
         when:
           - inventory_hostname in groups['automationedacontroller']
         block:
+          - name: Display EDA connection result
+            ansible.builtin.debug:
+              var: eda_db_connection['stderr']
+
           - name: Display AAP installed EDA db test results
             when: groups['database'] | lenght > 0
             ansible.builtin.debug:
@@ -328,7 +327,4 @@
                   else
                   "All automationedacontroller_pg_ vars were set properly"
             run_once: true
-
-
-
 ...

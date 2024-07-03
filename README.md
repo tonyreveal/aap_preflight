@@ -17,6 +17,12 @@ See list of [post-install checks](#post-install-checks-performed) below.
 | `postinstall_tasks.yml` | Uses the AAP install inventory to perform post-installation tasks. |
 
 
+## Other Recommendations:
+
+If you are deploying a large AAP cluster with instance groups and hop nodes in your inventory, I suggest you run `./setup.sh -- --tag generate_dot_file` before you perform the install.  This will generate a file called `mesh-topology.dot`.  You can then copy the contents of the dot file into [GraphViz Online]('https://dreampuf.github.io/GraphvizOnline') to view the topology and make sure it looks correct.
+
+
+
 ### Usage:
 
 The inventory used must be your AAP install inventory file
@@ -34,7 +40,7 @@ The inventory used must be your AAP install inventory file
 - Stops and Disables chef-client on all hosts in inventory if installed and running
 - AAP install database validation
   - Check all pg_* vars for controller database
-  - Check all automationhub_pg_ vars for automation hub
+  - Check all automationhub_pg_* vars for automation hub
   - Check all automationedacontroller_pg_* vars for eda controller
 - Non-AAP install managed database tests
   - Controller:
