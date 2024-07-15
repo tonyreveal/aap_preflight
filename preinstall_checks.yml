@@ -22,10 +22,12 @@
         - name: Make sure repos are disabled
           redhat.rhel_system_roles.rhsm_repository:
             name: "{{ disable_repos }}"
+            state: disabled
         
         - name: Make sure the Base OS repo is enabled
           redhat.rhel_system_roles.rhsm_repository:
             name: "{{ enable_repos }}"
+            state: enabled
 
         - name: Get service facts
           ansible.builtin.service_facts:
@@ -35,7 +37,7 @@
             name: chef-client
             state: stopped
             enabled: false
-          when: 'chef-client' in services
+          when: "'chef-client' in services"
     
     - name: Validate pg_* vars
       when: groups['database'] | length > 0
@@ -237,7 +239,7 @@
                     false
                   }}
 
-   - name: Display Controller test results
+    - name: Display Controller test results
       when:
         - inventory_hostname in groups['automationcontroller']
       block:

@@ -2,21 +2,21 @@
 - name: Re-enable repos and Chef-Client after installing AAP
   hosts: all
   gather_facts: false
-  pre-tasks:
+  pre_tasks:
     - name: Include vars
       ansible.builtin.include_vars:
         file: vars/check_vars.yml
   tasks:
     - name: Re-enable repositories and make sure Redis group is created correctly.
-      block:
       become: true
+      block:
         - name: Make sure repos are enabled
           redhat.rhel_system_roles.rhsm_repository:
             name: "{{ all_repos }}"
             state: 'enabled'
- 
+
         - name: Get service facts
-        ansible.builtin.service_facts:
+          ansible.builtin.service_facts:
 
         # Do we really want to do this?
         # I don't like the idea of managing AAP with Chef
@@ -25,7 +25,7 @@
             name: 'chef-client'
             state: 'started'
             enabled: true
-          when: 'chef-client' in services
+          when: "'chef-client' in services"
 
 # Validate AWX is a member of the correct groups       
         - name: Ensure Redis group is created
