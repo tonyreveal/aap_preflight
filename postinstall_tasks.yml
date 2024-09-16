@@ -1,5 +1,5 @@
 ---
-- name: Re-enable repos and Chef-Client after installing AAP
+- name: Re-enable repos and validate AAP install
   hosts: all
   gather_facts: false
   pre_tasks:
@@ -7,7 +7,7 @@
       ansible.builtin.include_vars:
         file: vars/check_vars.yml
   tasks:
-    - name: Re-enable repositories and make sure Redis group is created correctly.
+    - name: Re-enable repositories and chef-client if present 
       become: true
       block:
         - name: Make sure repos are enabled
@@ -27,37 +27,60 @@
             enabled: true
           when: "'chef-client' in services"
 
-# Validate AWX is a member of the correct groups       
-        - name: Ensure Redis group is created
+    - name: Make sure Users and groups are configured on Controllers
+      become: true
+      check_mode: true
+      when: inventory_hostname in groups['automationcontroller']
+      block:
+        - name: Ensure Groups are present locally on Controllers
           ansible.builtin.group:
-            name: 'redis'
+            name: "{{ item }}"
             state: 'present'
-          check_mode: true
-          when:
-            - inventory_hostname in groups['automationcontroller'] or inventory_hostname in groups['execution_nodes']
+          loop: "{{ controller_groups }}"
+          register: controller_groups_status
 
-        - name: Make sure awx is a member of the redis group on controllers
+        - name: Ensure all users were created locally on Controllers
           ansible.builtin.user:
-            name: 'awx'
-            group: 'awx'
-            groups: 'nginx,receptor,redis'
-          check_mode: true
-          when:
-            - inventory_hostname in groups['automationcontroller']
- 
-        - name: Make sure awx is a member of the redis group on execution nodes
-          ansible.builtin.user:
-            name: 'awx'
-            group: 'awx'
-            groups: 'receptor'
-          check_mode: true
-          when:
-            - inventory_hostname in groups['execution_nodes']
+            name: "{{ item['name'] | default(omit) }}"
+            comment: "{{ item['comment'] | default(omit) }}"
+            group: "{{ item['group'] | default(omit) }}"
+            groups: "{{ item['groups'] | default(omit) }}"
+            home:  "{{ item['home'] | default(omit) }}"
+            local:  "{{ item['local'] | default(omit) }}"
+            shell: "{{ item['shell'] | default(omit) }}"
+            state: 'present'
+          loop: "{{ controller_users }}"
+          register: controller_users_status
 
-# Receptor Tests
-    - name: Check Receptor connectivity
+    - name: Make sure Users and groups are configured on Execution and Hop nodes
+      become: true
+      check_mode: true
+      when: inventory_hostname in groups['execution_nodes']
+      block:
+        - name: Ensure Groups are present locally on Execution and Hop nodes
+          ansible.builtin.group:
+            name: "{{ item }}"
+            state: 'present'
+          loop: "{{ execution_groups }}"
+          register: execution_groups_status
+
+        - name: Ensure all users were created locally on Execution and Hop nodes
+          ansible.builtin.user:
+            name: "{{ item['name'] | default(omit) }}"
+            comment: "{{ item['comment'] | default(omit) }}"
+            group: "{{ item['group'] | default(omit) }}"
+            groups: "{{ item['groups'] | default(omit) }}"
+            home:  "{{ item['home'] | default(omit) }}"
+            local:  "{{ item['local'] | default(omit) }}"
+            shell: "{{ item['shell'] | default(omit) }}"
+            state: 'present'
+          loop: "{{ execution_users }}"
+          register: execution_users_status
+
+    - name: Check Receptor is installed and service is running on all controllers, execution, and hop nodes
       when:
-        - inventory_hostname in groups['execution_nodes']
+        - inventory_hostname in groups['automationcontroller'] or
+          inventory_hostname in groups['execution_nodes']
       block:
         - name: Gather package facts
           ansible.builtin.package_facts:
@@ -65,8 +88,8 @@
         - name: Check if Receptor is installed
           ansible.builtin.set_fact:
             receptor_present: >-
-              {{ true if packages | selectattr('name', 'defined') |
-                selectattr('name', 'equalto', 'receptor.x86_64') | length == 1
+              {{ true if packages | dict2items | map(attribute='key') |
+                select('regex', 'receptor') | length >= 1
                 else
                 false
               }}
@@ -74,50 +97,96 @@
         - name: Check if receptor service is running
           ansible.builtin.set_fact:
             receptor_svc_running: >-
-              {{ true if services | selectattr('name', 'defined') |
-                selectattr('name', 'contains', 'receptor') | length == 1 |
-                selectattr('state', 'equalto', 'running')
+              {{ true if services['receptor.service'] is defined and
+                services['receptor.service']['state'] == 'running'
                 else
                 false
               }}
+          when: receptor_present
+
+      rescue:
+        - name: Reset hosts
+          ansible.builtin.meta: clear_host_errors
+
+    - name: Verify receptor connectivity to peers
+      when:
+        - inventory_hostname in groups['automationcontroller'] or
+          inventory_hostname in groups['execution_nodes']
+      block:
+        - name: Verify Controller receptor connectivity to peers 
+          ansible.builtin.command:
+            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ peer_nodes }}"
+          become: true
+          register: controller_receptor_connection
+          ignore_errors: true
+          loop: "{{ groups['automationcontroller'][peers] }}"
+          loop_control:
+            loop_var: peer_nodes
+          when:
+            - receptor_present
+            - receptor_svc_running
+            - hostvars[inventory_hostname]['node_type'] == 'hybrid' or |
+              hostvars[inventory_hostname]['node_type'] == 'control'
 
         - name: Verify Hop node receptor connectivity to Controllers
           ansible.builtin.command:
-            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ control_node }}"
+            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ peer_nodes }}"
           become: true
           register: hop_receptor_connection
           ignore_errors: true
           loop: "{{ groups['automationcontroller'] }}"
           loop_control:
-            loop_var: control_node
+            loop_var: peer_nodes
           when:
             - receptor_present
             - receptor_svc_running
             - hostvars[inventory_hostname]['node_type'] == 'hop'
- 
-        - name: Display Hop node receptor connectivity results
-          ansible.builtin.debug:
-            var: hop_receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
-          when: hop_receptor_connection is defined
 
-        - name: Verify Execution node receptor connectivity to Controllers
+        - name: Verify Execution node receptor connectivity to Hop nodes
           ansible.builtin.command:
-            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ control_node }}"
+            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ peer_nodes }}"
           become: true
           register: exec_receptor_connection
           ignore_errors: true
-          loop: "{{ groups['automationcontroller'] }}"
+          loop: "{{ groups['execution_nodes'][peers] }}"
           loop_control:
-            loop_var: control_node
+            loop_var: peer_nodes
           when:
             - receptor_present
             - receptor_svc_running
-            - hostvars[inventory_hostname]['node_type'] == 'exec'
+            - hostvars[inventory_hostname]['node_type'] == 'execution'
+
+    - name: Display all test results
+      block:
+        # - name: Display Controller Groups result
+        #   ansible.builtin.debug:
+        #     var: controller_groups_status
+        #   when: controller_groups_status is defined
+
+        # - name: Display Controller Users result
+        #   ansible.builtin.debug:
+        #     var: controller_users_status
+        #   when: controller_users_status is defined
+
+        # - name: Display Execution and Hop node Groups result
+        #   ansible.builtin.debug:
+        #     var: execution_groups_status
+        #   when: execution_groups_status is defined
+
+        # - name: Display Execution and Hop node Users result
+        #   ansible.builtin.debug:
+        #     var: execution_users_status
+        #   when: execution_users_status is defined
+
+        - name: Display Hop node receptor connectivity results
+          ansible.builtin.debug:
+            var: controller_receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
+          when: controller_receptor_connection is defined
 
         - name: Display Execution node receptor success connectivity results
           ansible.builtin.debug:
-            var: exec_receptor_connection['results'] | selectattr('stdout', 'defined') | map(attribute='stdout') | list
-          when: exec_receptor_connection is defined
+            var: hop_receptor_connection['results'] | selectattr('stdout', 'defined') | map(attribute='stdout') | list
+          when: hop_receptor_connection is defined
 
         - name: Display Execution node receptor failure connectivity results
           ansible.builtin.debug:

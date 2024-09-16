@@ -15,6 +15,7 @@ See list of [post-install checks](#post-install-checks-performed) below.
 |---|---|
 | `preinstall_checks.yml` | Uses the AAP install inventory to perform pre-installation validation tasks. |
 | `postinstall_tasks.yml` | Uses the AAP install inventory to perform post-installation tasks. |
+| `assess_deployment.yml` | Uses the AAP inventory to assess an existing AAP deployemtn. |
 
 
 ## Other Recommendations:
@@ -63,9 +64,8 @@ The inventory used must be your AAP install inventory file
 - Re-enables repositories on all hosts in inventory
 - Re-enables chef-client if installed
   - I really don't like the idea of managing AAP with Chef
-- Checks that the redis group is created on controllers and execution nodes
-- Checks that the awx user is a member of redis, nginx, and receptor groups on Controllers.
-- Checks that the awx user is a member of the receptor group on execution nodes
+- Checks that all appropriate groups are created on controllers, execution, and hop nodes
+- Checks that all appropriate users are created and members of the correct groups on controllers, execution, and hop nodes
 - Check Hop node receptor port connectivity to Controller.
   - Checks if receptor is installed.
   - Checks if receptor service is running.

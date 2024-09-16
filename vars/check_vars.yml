@@ -1,11 +1,65 @@
 ---
 install_pkgs:
   - 'nmap-ncat'
+
 disable_repos:
   - 'rhel-9-for-x86_64-appstream-rpms'
+
 enable_repos:
   - 'rhel-9-for-x86_64-baseos-rpms'
+
 all_repos:
   - 'rhel-9-for-x86_64-appstream-rpms'
   - 'rhel-9-for-x86_64-baseos-rpms'
+
+controller_groups:
+  - redis
+  - nginx
+  - awx
+  - receptor
+
+controller_users:
+  - name: redis
+    comment: 'Redis Database Server'
+    group: 'redis'
+    home: '/var/lib/redis'
+    local: true
+    shell: '/sbin/nologin'
+  - name: nginx
+    group: 'nginx'
+    home: '/var/lib/nginx'
+    local: true
+    shell: '/sbin/nologin'
+  - name: awx
+    group: 'awx'
+    groups:
+      - 'redis'
+      - 'nginx'
+      - 'receptor'
+    home:  '/var/lib/awx'
+    local: true
+    shell: '/bin/bash'
+  - name: receptor
+    group: 'receptor'
+    home:  '/var/lib/receptor'
+    local: true
+    shell: '/bin/bash'
+
+execution_groups:
+  - 'awx'
+  - 'receptor'
+
+execution_users:
+  - name: awx
+    group: 'awx'
+    groups:
+      - 'receptor'
+    home:  '/var/lib/awx'
+    local: true
+    shell: '/bin/bash'
+  - name: receptor
+    group: 'receptor'
+    home:  '/var/lib/receptor'
+    local: true
+    shell: '/bin/bash'
 ...
