@@ -1,6 +1,7 @@
 ---
 install_pkgs:
   - 'nmap-ncat'
+  - 'python-psutil'
 
 disable_repos:
   - 'rhel-9-for-x86_64-appstream-rpms'

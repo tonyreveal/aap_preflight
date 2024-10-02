@@ -1,7 +1,7 @@
 ---
 - name: Re-enable repos and validate AAP install
-  hosts: all
-  gather_facts: false
+  hosts: automationcontroller,execution_nodes,automationhub,automationedacontroller,database
+  gather_facts: true
   pre_tasks:
     - name: Include vars
       ansible.builtin.include_vars:
@@ -10,10 +10,15 @@
     - name: Re-enable repositories and chef-client if present 
       become: true
       block:
-        - name: Make sure repos are enabled
+        - name: Make sure BaseOS and AppStream repos are enabled
           redhat.rhel_system_roles.rhsm_repository:
             name: "{{ all_repos }}"
             state: 'enabled'
+
+        - name: Make sure AAP repo is disabled
+          redhat.rhel_system_roles.rhsm_repository:
+            name: 'ansible-automation-platform-2.4-for-rhel-9-x86_64-rpms'
+            state: 'disabled'
 
         - name: Get service facts
           ansible.builtin.service_facts:
@@ -27,6 +32,17 @@
             enabled: true
           when: "'chef-client' in services"
 
+        - name: Make sure AWX users UMASK is always 0022
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/files/.bash_profile"
+            dest: '/var/lib/awx/.bash_profile'
+            owner: 'awx'
+            group: 'awx'
+            mode: '0644'
+          when:
+            - inventory_hostname in groups['automationcontroller'] or
+              inventory_hostname in groups['execution_nodes']
+
     - name: Make sure Users and groups are configured on Controllers
       become: true
       check_mode: true
@@ -35,6 +51,7 @@
         - name: Ensure Groups are present locally on Controllers
           ansible.builtin.group:
             name: "{{ item }}"
+            local: true
             state: 'present'
           loop: "{{ controller_groups }}"
           register: controller_groups_status
@@ -60,6 +77,7 @@
         - name: Ensure Groups are present locally on Execution and Hop nodes
           ansible.builtin.group:
             name: "{{ item }}"
+            local: true
             state: 'present'
           loop: "{{ execution_groups }}"
           register: execution_groups_status
@@ -108,88 +126,69 @@
         - name: Reset hosts
           ansible.builtin.meta: clear_host_errors
 
-    - name: Verify receptor connectivity to peers
-      when:
-        - inventory_hostname in groups['automationcontroller'] or
-          inventory_hostname in groups['execution_nodes']
-      block:
-        - name: Verify Controller receptor connectivity to peers 
-          ansible.builtin.command:
-            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ peer_nodes }}"
-          become: true
-          register: controller_receptor_connection
-          ignore_errors: true
-          loop: "{{ groups['automationcontroller'][peers] }}"
-          loop_control:
-            loop_var: peer_nodes
-          when:
-            - receptor_present
-            - receptor_svc_running
-            - hostvars[inventory_hostname]['node_type'] == 'hybrid' or |
-              hostvars[inventory_hostname]['node_type'] == 'control'
-
-        - name: Verify Hop node receptor connectivity to Controllers
-          ansible.builtin.command:
-            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ peer_nodes }}"
-          become: true
-          register: hop_receptor_connection
-          ignore_errors: true
-          loop: "{{ groups['automationcontroller'] }}"
-          loop_control:
-            loop_var: peer_nodes
-          when:
-            - receptor_present
-            - receptor_svc_running
-            - hostvars[inventory_hostname]['node_type'] == 'hop'
-
-        - name: Verify Execution node receptor connectivity to Hop nodes
-          ansible.builtin.command:
-            cmd: "receptorctl --socket /run/awx-receptor/receptor.sock ping {{ peer_nodes }}"
-          become: true
-          register: exec_receptor_connection
-          ignore_errors: true
-          loop: "{{ groups['execution_nodes'][peers] }}"
-          loop_control:
-            loop_var: peer_nodes
-          when:
-            - receptor_present
-            - receptor_svc_running
-            - hostvars[inventory_hostname]['node_type'] == 'execution'
-
     - name: Display all test results
       block:
-        # - name: Display Controller Groups result
-        #   ansible.builtin.debug:
-        #     var: controller_groups_status
-        #   when: controller_groups_status is defined
-
-        # - name: Display Controller Users result
-        #   ansible.builtin.debug:
-        #     var: controller_users_status
-        #   when: controller_users_status is defined
-
-        # - name: Display Execution and Hop node Groups result
-        #   ansible.builtin.debug:
-        #     var: execution_groups_status
-        #   when: execution_groups_status is defined
-
-        # - name: Display Execution and Hop node Users result
-        #   ansible.builtin.debug:
-        #     var: execution_users_status
-        #   when: execution_users_status is defined
-
-        - name: Display Hop node receptor connectivity results
+        - name: Display Controller Groups result
           ansible.builtin.debug:
-            var: controller_receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
-          when: controller_receptor_connection is defined
-
-        - name: Display Execution node receptor success connectivity results
+            msg: 'All groups on Automation Controllers were properly
+              configured during installation.'
+          when:
+            - controller_groups_status is defined
+            - not controller_groups_status['changed']
+        
+        - name: Display Controller Groups result when changed
           ansible.builtin.debug:
-            var: hop_receptor_connection['results'] | selectattr('stdout', 'defined') | map(attribute='stdout') | list
-          when: hop_receptor_connection is defined
+            msg: 'One or more groups on Automation Controllers were
+              reconfigured by this playbook after the AAP installation.'
+          when:
+            - controller_groups_status is defined
+            - controller_groups_status['changed']
 
-        - name: Display Execution node receptor failure connectivity results
+        - name: Display Controller Users result
           ansible.builtin.debug:
-            var: exec_receptor_connection['results'] | selectattr('stderr', 'defined') | map(attribute='stderr') | list
-          when: exec_receptor_connection is defined
+            msg: 'All users on Automation Controllers were properly
+              configured during installation.'
+          when:
+            - controller_users_status is defined
+            - not controller_users_status ['changed']
+
+        - name: Display Controller Users result when changed
+          ansible.builtin.debug:
+            msg: 'One or more users on Automation Controllers were
+              reconfigured by this playbook after the AAP installation.'
+          when:
+            - controller_users_status is defined
+            - controller_users_status ['changed']
+
+        - name: Display Execution and Hop node Groups result
+          ansible.builtin.debug:
+            msg: 'All groups on Execution and Hop nodes were properly
+              configured during installation.'
+          when:
+            - execution_groups_status is defined
+            - not execution_groups_status['changed']
+        
+        - name: Display Execution and Hop node Groups result when changed
+          ansible.builtin.debug:
+            msg: 'One or more groups on Execution and Hop nodes were
+              reconfigured by this playbook after the AAP installation.'
+          when:
+            - execution_groups_status is defined
+            - execution_groups_status['changed']
+
+        - name: Display Execution and Hop node Users result
+          ansible.builtin.debug:
+            msg: 'All users on Execution and Hop nodes were properly
+              configured during installation.'
+          when:
+            - execution_users_status is defined
+            - not execution_users_status['changed']
+        
+        - name: Display Execution and Hop node Users result when changed
+          ansible.builtin.debug:
+            msg: 'One or more users on Execution and Hop nodes were
+              reconfigured by this playbook after the AAP installation.'
+          when:
+            - execution_users_status is defined
+            - execution_users_status['changed']
 ...

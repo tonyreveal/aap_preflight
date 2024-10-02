@@ -10,14 +10,10 @@
     - name: Pre-flight tasks for all hosts in inventory
       become: true
       block:
-        - name: Install nc for connectivity tests before disabling repos
+        - name: Install packages needed to complete connectivity tests on all hosts
           ansible.builtin.dnf:
             name: "{{ install_pkgs }}"
             state: 'present'
-          when:
-            - inventory_hostname in groups['automationcontroller']
-            - inventory_hostname in groups['automationhub']
-            - inventory_hostname in groups['automationedacontroller']
 
         - name: Make sure repos are disabled
           redhat.rhel_system_roles.rhsm_repository:
@@ -122,6 +118,7 @@
                 cmd: "nc -zv {{ pg_host }} {{ pg_port }}"
               register: aap_db_connection
               ignore_errors: true
+              changed_when: false
     
             - name: Display Controller connection result
               ansible.builtin.debug:
@@ -150,6 +147,7 @@
                 cmd: "nc -zv {{ automationhub_pg_host }} {{ automationhub_pg_port }}"
               register: hub_db_connection
               ignore_errors: true
+              changed_when: false
     
             - name: Display HUB connection result
               ansible.builtin.debug:
@@ -196,6 +194,7 @@
                 cmd: "nc -zv {{ automationedacontroller_pg_host }} {{ automationedacontroller_pg_port }}"
               register: eda_db_connection
               ignore_errors: true
+              changed_when: false
     
             - name: Verify EDA database credentials by trying to connect to db
               community.postgresql.postgresql_ping:
@@ -244,7 +243,7 @@
         - inventory_hostname in groups['automationcontroller']
       block:
         - name: Display AAP installed db test results
-          when: groups['database'] | lenght > 0
+          when: groups['database'] | length > 0
           ansible.builtin.debug:
             msg: >-
               {{ check_pg_vars if check_pg_vars is defined
@@ -253,7 +252,7 @@
           run_once: true
         
         - name: Display Non-AAP installed db test results
-          when: groups['database'] | lenght > 0
+          when: groups['database'] | length > 0
           ansible.builtin.debug:
             msg: >-
               {{ check_pg_vars if check_pg_vars is defined
@@ -270,7 +269,7 @@
             - groups['automationhub'] | length == 1
           block:
             - name: Display AAP installed PAH db test results
-              when: groups['database'] | lenght > 0
+              when: groups['database'] | length > 0
               ansible.builtin.debug:
                 msg: >-
                   {{ ah_check_pg_vars if ah_check_pg_vars is defined
@@ -279,7 +278,7 @@
               run_once: true
             
             - name: Display Non-AAP installed / Self-Managed db test results
-              when: groups['database'] | lenght > 0
+              when: groups['database'] | length > 0
               ansible.builtin.debug:
                 var: hub_db_connection['stderr']
 
@@ -310,11 +309,11 @@
             var: eda_db_connection['stderr']
 
         - name: Display AAP installed EDA db test results
-          when: groups['database'] | lenght > 0
+          when: groups['database'] | length > 0
           ansible.builtin.debug:
             msg: >-
               {{ eda_check_pg_vars if eda_check_pg_vars is defined
                 else
-                "All automationedacontroller_pg_ vars were set properly"
+                "All automationedacontroller_pg_ vars were set properly" }}
           run_once: true
 ...

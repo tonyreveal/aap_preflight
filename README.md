@@ -1,8 +1,9 @@
 # aap_preflight
 
-One common issue with installing Ansible Automation Platform is running into errors 15 minutes into the installation.  Only to have to make corrections, re-run setup.sh and wait another 15 minutes to find out if your changes corrected the problem or not.
+The playbooks included in this repository are intended to help validate all AAP port connectivity, 
+database credentials (when applicable), etc before attempting to install.  Also included is a playbook to do a post-install validation of a cluster to ensure services are all running, required users were created successfully and correctly, umask is 0022 for the AWX user, etc
 
-The pre-install checks playbook does not cover every possible scenario.  But it does validate that all nodes in the inventory have appropriate connectivity and that any credentials specified for a non-AAP installer managed database are good.
+The pre-install playbook does not cover every possible scenario.  But it does validate that all nodes in the inventory have appropriate connectivity and that any credentials specified for a non-AAP installer managed database are good.
 
 See list of [pre-install checks](#pre-install-checks-performed) below.
 
@@ -15,7 +16,7 @@ See list of [post-install checks](#post-install-checks-performed) below.
 |---|---|
 | `preinstall_checks.yml` | Uses the AAP install inventory to perform pre-installation validation tasks. |
 | `postinstall_tasks.yml` | Uses the AAP install inventory to perform post-installation tasks. |
-| `assess_deployment.yml` | Uses the AAP inventory to assess an existing AAP deployemtn. |
+| `assess_deployment.yml` | Uses the AAP inventory to assess an existing AAP deployment. |
 
 
 ## Other Recommendations:
@@ -34,6 +35,8 @@ The inventory used must be your AAP install inventory file
 ### Pre-install checks performed:
 
 - Installs nmap-ncat (for port connectivity tests)
+- Installs python-psutil (for getting ruby / chef PIDs to make sure chef-client is stopped)
+- Installs python3.9-psycopg2 (required for database tests)
 - Disables appstream repo on all hosts in inventory
 - Enables baseos repo on all hosts in inventory
 - Check if Chef-Client is installed
@@ -62,7 +65,8 @@ The inventory used must be your AAP install inventory file
 ### Post-install checks performed:
 
 - Re-enables repositories on all hosts in inventory
-- Re-enables chef-client if installed
+- Ensures AAP repository is disabled (required for patching)
+- Re-enables chef-client if installed as a service
   - I really don't like the idea of managing AAP with Chef
 - Checks that all appropriate groups are created on controllers, execution, and hop nodes
 - Checks that all appropriate users are created and members of the correct groups on controllers, execution, and hop nodes

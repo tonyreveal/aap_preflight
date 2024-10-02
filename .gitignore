@@ -1,3 +1,10 @@
-inventory
-inventory_standalone
-ansible.cfg
+**/inventory.yml
+**/inventory_standalone
+**/inventory_standalone.yml
+**/ansible.cfg
+**/ansible-navigator.yml
+**/ansible-navigator.log
+roles/
+group_vars/
+ansible-navigator.log
+ansible-navigator.yml
