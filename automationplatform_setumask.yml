@@ -1,0 +1,22 @@
+---
+- name: Set umask for AAP user
+  hosts: all
+  gather_facts: true
+  become: false
+  tasks:
+    - name: Show ansible users home directory
+      ansible.builtin.debug:
+        var: ansible_user_dir
+
+    - name: Add line to users bash profile to set UMASK to 0022
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_user_dir }}/.bash_profile"
+        regexp: '^umask'
+        line: |
+          ###############################
+          # Managed by Ansible
+          # AAP user's umask must be 0022
+          # Do not change umask value
+          ###############################
+          umask 0022
+...
